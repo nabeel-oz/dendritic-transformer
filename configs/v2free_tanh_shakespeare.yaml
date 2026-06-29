@@ -1,0 +1,27 @@
+# V2 free, saturating (tanh) branches. Same as v2free but branch nonlinearity
+# is tanh instead of gelu (soma stays linear). Tests whether a self-limiting
+# dendritic branch specializes more cleanly.
+run_name: v2free_tanh_shakespeare
+ffn: dendritic_free
+branch_act: tanh
+
+d_model: 192
+n_layer: 4
+n_head: 6
+context: 128
+ffn_mult: 4
+dropout: 0.1
+branches: 4
+
+dataset: tinyshakespeare
+
+seed: 0
+batch_size: 64
+lr: 0.0006
+weight_decay: 0.1
+grad_clip: 1.0
+warmup_steps: 200
+max_steps: 2500
+eval_interval: 250
+eval_iters: 100
+sample_tokens: 300

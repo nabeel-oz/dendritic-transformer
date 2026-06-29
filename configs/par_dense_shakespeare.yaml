@@ -1,0 +1,30 @@
+# par_dense — SwiGLU main + plain-SwiGLU add-on (PARALLEL):
+#   out = main(x) + scale * addon(x)
+# Attribution control for par_dend: same gating/depth, NO compartmentalization.
+# par_dend < par_dense  =>  the compartmental structure does real work.
+run_name: par_dense_shakespeare
+ffn: par_dense
+
+d_model: 192
+n_layer: 4
+n_head: 6
+context: 128
+ffn_mult: 4
+dropout: 0.1
+
+branches: 4
+main_frac: 0.5
+connectivity: sparse
+
+dataset: tinyshakespeare
+
+seed: 0
+batch_size: 64
+lr: 0.0006
+weight_decay: 0.1
+grad_clip: 1.0
+warmup_steps: 200
+max_steps: 2500
+eval_interval: 250
+eval_iters: 100
+sample_tokens: 300

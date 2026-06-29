@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 380" font-family="'Segoe UI', Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="a" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto">
+      <path d="M0,0 L6.5,3 L0,6 Z" fill="#1C2A47"/>
+    </marker>
+  </defs>
+  <rect width="880" height="380" fill="#E9ECE7"/>
+
+  <!-- LEFT: standard neuron -->
+  <rect x="24" y="24" width="404" height="332" rx="16" fill="#F4F6F2" stroke="#1C2A47" stroke-opacity="0.15"/>
+  <text x="226" y="58" text-anchor="middle" font-size="19" font-weight="700" fill="#1C2A47">Standard neuron</text>
+  <text x="226" y="80" text-anchor="middle" font-size="13.5" fill="#1C2A47" fill-opacity="0.65">blend everything at once</text>
+
+  <g stroke="#1C2A47" stroke-opacity="0.55" stroke-width="1.6" marker-end="url(#a)" fill="none">
+    <line x1="92" y1="150" x2="208" y2="206"/>
+    <line x1="92" y1="190" x2="208" y2="206"/>
+    <line x1="92" y1="230" x2="208" y2="208"/>
+    <line x1="92" y1="270" x2="208" y2="210"/>
+  </g>
+  <g fill="#1C2A47">
+    <circle cx="84" cy="150" r="7"/><circle cx="84" cy="190" r="7"/>
+    <circle cx="84" cy="230" r="7"/><circle cx="84" cy="270" r="7"/>
+  </g>
+  <circle cx="234" cy="208" r="28" fill="#C0573E"/>
+  <text x="234" y="214" text-anchor="middle" font-size="20" font-weight="700" fill="#F4F6F2">&#931;</text>
+  <line x1="262" y1="208" x2="384" y2="208" stroke="#1C2A47" stroke-width="1.8" marker-end="url(#a)"/>
+  <text x="350" y="196" text-anchor="middle" font-size="12.5" fill="#1C2A47" fill-opacity="0.7">output</text>
+
+  <!-- RIGHT: dendritic neuron -->
+  <rect x="452" y="24" width="404" height="332" rx="16" fill="#F4F6F2" stroke="#1C2A47" stroke-opacity="0.15"/>
+  <text x="654" y="58" text-anchor="middle" font-size="19" font-weight="700" fill="#1C2A47">Dendritic neuron</text>
+  <text x="654" y="80" text-anchor="middle" font-size="13.5" fill="#1C2A47" fill-opacity="0.65">sort, process, then combine</text>
+
+  <g fill="#1C2A47">
+    <circle cx="498" cy="150" r="7"/><circle cx="498" cy="186" r="7"/>
+    <circle cx="498" cy="230" r="7"/><circle cx="498" cy="266" r="7"/>
+  </g>
+  <g stroke="#1C2A47" stroke-opacity="0.5" stroke-width="1.5" marker-end="url(#a)" fill="none">
+    <line x1="506" y1="150" x2="588" y2="166"/>
+    <line x1="506" y1="186" x2="588" y2="174"/>
+    <line x1="506" y1="230" x2="588" y2="252"/>
+    <line x1="506" y1="266" x2="588" y2="260"/>
+  </g>
+  <rect x="590" y="150" width="58" height="40" rx="9" fill="#2C7F8C"/>
+  <rect x="590" y="236" width="58" height="40" rx="9" fill="#2C7F8C"/>
+  <text x="619" y="175" text-anchor="middle" font-size="12.5" fill="#F4F6F2">branch</text>
+  <text x="619" y="261" text-anchor="middle" font-size="12.5" fill="#F4F6F2">branch</text>
+  <g stroke="#1C2A47" stroke-opacity="0.55" stroke-width="1.6" marker-end="url(#a)" fill="none">
+    <line x1="648" y1="170" x2="724" y2="202"/>
+    <line x1="648" y1="256" x2="724" y2="214"/>
+  </g>
+  <circle cx="752" cy="208" r="26" fill="#6E63A6"/>
+  <text x="752" y="213" text-anchor="middle" font-size="13" font-weight="700" fill="#F4F6F2">soma</text>
+  <line x1="778" y1="208" x2="838" y2="208" stroke="#1C2A47" stroke-width="1.8" marker-end="url(#a)"/>
+  <text x="812" y="196" text-anchor="middle" font-size="12.5" fill="#1C2A47" fill-opacity="0.7">output</text>
+</svg>

@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 400" font-family="'Segoe UI', Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="a" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto">
+      <path d="M0,0 L6.5,3 L0,6 Z" fill="#1C2A47"/>
+    </marker>
+  </defs>
+  <rect width="920" height="400" fill="#E9ECE7"/>
+
+  <!-- ============ PARALLEL ============ -->
+  <rect x="24" y="24" width="428" height="318" rx="16" fill="#F4F6F2" stroke="#1C2A47" stroke-opacity="0.15"/>
+  <text x="238" y="56" text-anchor="middle" font-size="18" font-weight="700" fill="#1C2A47">Parallel &#8212; add at the end</text>
+
+  <circle cx="80" cy="190" r="15" fill="#1C2A47"/>
+  <text x="80" y="195" text-anchor="middle" font-size="12.5" fill="#F4F6F2">x</text>
+
+  <rect x="170" y="118" width="156" height="48" rx="10" fill="#6E63A6"/>
+  <text x="248" y="147" text-anchor="middle" font-size="13" fill="#F4F6F2">main (SwiGLU)</text>
+  <rect x="170" y="232" width="156" height="48" rx="10" fill="#2C7F8C"/>
+  <text x="248" y="261" text-anchor="middle" font-size="13" fill="#F4F6F2">dendrite add-on</text>
+
+  <g stroke="#1C2A47" stroke-opacity="0.55" stroke-width="1.7" fill="none" marker-end="url(#a)">
+    <line x1="95" y1="184" x2="170" y2="146"/>
+    <line x1="95" y1="196" x2="170" y2="254"/>
+    <line x1="326" y1="142" x2="392" y2="184"/>
+    <line x1="326" y1="256" x2="392" y2="196"/>
+  </g>
+  <text x="372" y="250" text-anchor="middle" font-size="11.5" fill="#1C2A47" fill-opacity="0.7">&#215; small</text>
+
+  <circle cx="406" cy="190" r="17" fill="none" stroke="#1C2A47" stroke-width="2"/>
+  <line x1="406" y1="181" x2="406" y2="199" stroke="#1C2A47" stroke-width="2"/>
+  <line x1="397" y1="190" x2="415" y2="190" stroke="#1C2A47" stroke-width="2"/>
+  <line x1="423" y1="190" x2="448" y2="190" stroke="#1C2A47" stroke-width="1.8" marker-end="url(#a)"/>
+
+  <text x="238" y="322" text-anchor="middle" font-size="12.5" fill="#1C2A47" fill-opacity="0.75">main never sees the dendritic features</text>
+
+  <!-- ============ SEQUENTIAL ============ -->
+  <rect x="468" y="24" width="428" height="318" rx="16" fill="#F4F6F2" stroke="#1C2A47" stroke-opacity="0.15"/>
+  <text x="682" y="56" text-anchor="middle" font-size="18" font-weight="700" fill="#1C2A47">Sequential &#8212; feed the soma</text>
+
+  <circle cx="520" cy="170" r="15" fill="#1C2A47"/>
+  <text x="520" y="175" text-anchor="middle" font-size="12.5" fill="#F4F6F2">x</text>
+
+  <rect x="560" y="244" width="150" height="46" rx="10" fill="#2C7F8C"/>
+  <text x="635" y="272" text-anchor="middle" font-size="13" fill="#F4F6F2">dendrite add-on</text>
+
+  <!-- sum -->
+  <circle cx="640" cy="170" r="17" fill="none" stroke="#1C2A47" stroke-width="2"/>
+  <line x1="640" y1="161" x2="640" y2="179" stroke="#1C2A47" stroke-width="2"/>
+  <line x1="631" y1="170" x2="649" y2="170" stroke="#1C2A47" stroke-width="2"/>
+
+  <rect x="700" y="146" width="156" height="48" rx="10" fill="#6E63A6"/>
+  <text x="778" y="175" text-anchor="middle" font-size="13" fill="#F4F6F2">main (SwiGLU)</text>
+
+  <g stroke="#1C2A47" stroke-opacity="0.55" stroke-width="1.7" fill="none" marker-end="url(#a)">
+    <line x1="535" y1="166" x2="621" y2="170"/>
+    <line x1="528" y1="182" x2="560" y2="256"/>
+    <line x1="640" y1="244" x2="640" y2="191"/>
+    <line x1="658" y1="170" x2="700" y2="170"/>
+  </g>
+  <text x="664" y="220" text-anchor="middle" font-size="11.5" fill="#1C2A47" fill-opacity="0.7">&#215; small</text>
+  <line x1="856" y1="170" x2="892" y2="170" stroke="#1C2A47" stroke-width="1.8" marker-end="url(#a)"/>
+
+  <text x="682" y="322" text-anchor="middle" font-size="12.5" fill="#1C2A47" fill-opacity="0.75">main computes <tspan font-style="italic">on</tspan> the dendritic features</text>
+
+  <!-- caption -->
+  <text x="460" y="378" text-anchor="middle" font-size="14.5" font-weight="600" fill="#1C2A47">Add at the end, or feed the soma? &#8212; in both, x is preserved, so nothing is starved.</text>
+</svg>

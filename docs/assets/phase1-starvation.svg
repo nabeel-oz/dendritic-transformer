@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 360" font-family="'Segoe UI', Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="a" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto">
+      <path d="M0,0 L6.5,3 L0,6 Z" fill="#1C2A47"/>
+    </marker>
+  </defs>
+  <rect width="880" height="360" fill="#E9ECE7"/>
+  <text x="440" y="46" text-anchor="middle" font-size="19" font-weight="700" fill="#1C2A47">Substitutive design (Phase 1): branches replace the direct path</text>
+
+  <!-- input -->
+  <circle cx="96" cy="190" r="16" fill="#1C2A47"/>
+  <text x="96" y="230" text-anchor="middle" font-size="13" fill="#1C2A47">input x</text>
+
+  <!-- carve into slices -->
+  <g stroke="#1C2A47" stroke-opacity="0.55" stroke-width="1.6" marker-end="url(#a)" fill="none">
+    <line x1="112" y1="184" x2="300" y2="120"/>
+    <line x1="112" y1="190" x2="300" y2="190"/>
+    <line x1="112" y1="196" x2="300" y2="260"/>
+  </g>
+  <text x="200" y="150" text-anchor="middle" font-size="12" fill="#1C2A47" fill-opacity="0.7">sliced</text>
+
+  <!-- branches -->
+  <g fill="#2C7F8C">
+    <rect x="302" y="100" width="92" height="40" rx="9"/>
+    <rect x="302" y="170" width="92" height="40" rx="9"/>
+    <rect x="302" y="240" width="92" height="40" rx="9"/>
+  </g>
+  <g fill="#F4F6F2" font-size="12.5" text-anchor="middle">
+    <text x="348" y="125">branch (slice 1)</text>
+    <text x="348" y="195">branch (slice 2)</text>
+    <text x="348" y="265">branch (slice 3)</text>
+  </g>
+
+  <!-- branches -> soma -->
+  <g stroke="#1C2A47" stroke-opacity="0.55" stroke-width="1.6" marker-end="url(#a)" fill="none">
+    <line x1="394" y1="120" x2="560" y2="184"/>
+    <line x1="394" y1="190" x2="560" y2="190"/>
+    <line x1="394" y1="260" x2="560" y2="196"/>
+  </g>
+
+  <!-- soma + output -->
+  <circle cx="586" cy="190" r="26" fill="#6E63A6"/>
+  <text x="586" y="195" text-anchor="middle" font-size="13" font-weight="700" fill="#F4F6F2">soma</text>
+  <line x1="612" y1="190" x2="700" y2="190" stroke="#1C2A47" stroke-width="1.8" marker-end="url(#a)"/>
+  <text x="672" y="178" text-anchor="middle" font-size="12.5" fill="#1C2A47" fill-opacity="0.7">output</text>
+
+  <!-- missing direct path (lifted clear of the branch boxes) -->
+  <path d="M112 172 C 300 30, 470 30, 566 172" fill="none" stroke="#C0573E" stroke-width="2" stroke-dasharray="6 6" stroke-opacity="0.85"/>
+  <line x1="364" y1="56" x2="384" y2="74" stroke="#C0573E" stroke-width="2.4"/>
+  <line x1="384" y1="56" x2="364" y2="74" stroke="#C0573E" stroke-width="2.4"/>
+  <text x="474" y="96" text-anchor="middle" font-size="13" font-weight="600" fill="#C0573E">no direct route</text>
+
+  <text x="440" y="330" text-anchor="middle" font-size="13.5" fill="#1C2A47">The original signal never arrives whole &#8212; the neuron is <tspan font-weight="700">starved</tspan>.</text>
+</svg>

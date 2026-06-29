@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 300" font-family="'Segoe UI', Helvetica, Arial, sans-serif">
+  <rect width="880" height="300" fill="#E9ECE7"/>
+  <text x="440" y="50" text-anchor="middle" font-size="19" font-weight="700" fill="#1C2A47">Same budget on both sides &#8212; only the wiring differs</text>
+
+  <!-- equal-budget reference line -->
+  <line x1="240" y1="80" x2="240" y2="250" stroke="#1C2A47" stroke-opacity="0.35" stroke-width="1.4" stroke-dasharray="5 5"/>
+  <line x1="700" y1="80" x2="700" y2="250" stroke="#1C2A47" stroke-opacity="0.35" stroke-width="1.4" stroke-dasharray="5 5"/>
+  <text x="700" y="270" text-anchor="middle" font-size="12.5" fill="#1C2A47" fill-opacity="0.7">identical parameter budget</text>
+
+  <!-- standard bar -->
+  <text x="232" y="120" text-anchor="end" font-size="14.5" fill="#1C2A47">standard neuron</text>
+  <rect x="240" y="104" width="460" height="34" rx="8" fill="#C0573E"/>
+  <text x="470" y="126" text-anchor="middle" font-size="12.5" fill="#F4F6F2">one wide blend</text>
+
+  <!-- dendritic bar: same total width, internally partitioned -->
+  <text x="232" y="196" text-anchor="end" font-size="14.5" fill="#1C2A47">dendritic neuron</text>
+  <g>
+    <rect x="240" y="180" width="146" height="34" rx="8" fill="#2C7F8C"/>
+    <rect x="396" y="180" width="146" height="34" rx="8" fill="#2C7F8C"/>
+    <rect x="552" y="180" width="148" height="34" rx="8" fill="#6E63A6"/>
+    <text x="313" y="202" text-anchor="middle" font-size="11.5" fill="#F4F6F2">branch</text>
+    <text x="469" y="202" text-anchor="middle" font-size="11.5" fill="#F4F6F2">branch</text>
+    <text x="626" y="202" text-anchor="middle" font-size="11.5" fill="#F4F6F2">soma</text>
+  </g>
+
+  <text x="470" y="250" text-anchor="middle" font-size="13" fill="#1C2A47" fill-opacity="0.7">a checked assertion fails any model more than 1% off this budget</text>
+</svg>

@@ -1,0 +1,7 @@
+# Dendritic Transformer — minimal dependencies
+# Install torch with CUDA (Ada / RTX 4060, Python 3.13 -> cu124 cp313 wheels):
+#   pip install torch --index-url https://download.pytorch.org/whl/cu124
+torch
+numpy
+pyyaml
+matplotlib

@@ -1,0 +1,27 @@
+# V1.strict — Dendritic STRUCTURED, frozen-mask form. Same shape as V2; each
+# branch sees only its input slice via a fixed mask. Differs from V2 in wiring
+# ONLY. Parameter-matched to V0 on ALLOCATED params (mask leaves V1 with fewer
+# *active* params, so it can never win by being secretly bigger).
+run_name: v1strict_shakespeare
+ffn: dendritic_structured_strict
+
+d_model: 192
+n_layer: 4
+n_head: 6
+context: 128
+ffn_mult: 4
+dropout: 0.1
+branches: 4
+
+dataset: tinyshakespeare
+
+seed: 0
+batch_size: 64
+lr: 0.0006
+weight_decay: 0.1
+grad_clip: 1.0
+warmup_steps: 200
+max_steps: 2500
+eval_interval: 250
+eval_iters: 100
+sample_tokens: 300

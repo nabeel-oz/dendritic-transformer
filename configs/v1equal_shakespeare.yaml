@@ -1,0 +1,27 @@
+# V1.equal — Dendritic STRUCTURED, genuinely-sparse form. Each branch owns a
+# (d/B -> wb) weight (no dead weights); hidden width is auto-sized WIDER so the
+# count of *active* params equals V0/V2. Parameter-matched to V0 on ACTIVE
+# params. (Differs from V2 in width as well as wiring.)
+run_name: v1equal_shakespeare
+ffn: dendritic_structured_equal
+
+d_model: 192
+n_layer: 4
+n_head: 6
+context: 128
+ffn_mult: 4
+dropout: 0.1
+branches: 4
+
+dataset: tinyshakespeare
+
+seed: 0
+batch_size: 64
+lr: 0.0006
+weight_decay: 0.1
+grad_clip: 1.0
+warmup_steps: 200
+max_steps: 2500
+eval_interval: 250
+eval_iters: 100
+sample_tokens: 300

@@ -1,0 +1,32 @@
+# V0 — Standard point-FFN transformer on character-level TinyShakespeare.
+# This is the Step-1 sanity gate run (see PROJECT_BRIEF_PHASE1.md section 8).
+run_name: v0_shakespeare
+
+# --- which FFN (the only swappable piece across variants) ---
+ffn: point            # point | dendritic_structured | dendritic_free (only `point` implemented this pass)
+
+# --- backbone (identical across all future variants) ---
+d_model: 192
+n_layer: 4
+n_head: 6
+context: 128
+ffn_mult: 4           # FFN hidden = ffn_mult * d_model
+dropout: 0.1
+
+# --- dendritic-only knob, reserved for later passes ---
+branches: 4
+
+# --- data ---
+dataset: tinyshakespeare
+
+# --- optimisation ---
+seed: 0
+batch_size: 64
+lr: 0.0006
+weight_decay: 0.1
+grad_clip: 1.0
+warmup_steps: 200
+max_steps: 2500
+eval_interval: 250
+eval_iters: 100
+sample_tokens: 300    # length of generated sample at each eval

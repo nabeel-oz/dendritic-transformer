@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 420" font-family="'Segoe UI', Helvetica, Arial, sans-serif">
+  <rect width="1100" height="420" fill="#E9ECE7"/>
+  <text x="550" y="40" text-anchor="middle" font-size="19" font-weight="700" fill="#1C2A47">The arc of the project &#8212; who made which call</text>
+
+  <!-- legend -->
+  <circle cx="872" cy="64" r="8" fill="#2C7F8C"/><text x="886" y="69" font-size="13" fill="#1C2A47">Nabeel</text>
+  <circle cx="958" cy="64" r="8" fill="#C0573E"/><text x="972" y="69" font-size="13" fill="#1C2A47">Claude</text>
+
+  <!-- timeline -->
+  <line x1="60" y1="210" x2="1030" y2="210" stroke="#1C2A47" stroke-opacity="0.3" stroke-width="2"/>
+
+  <!-- connectors (odd nodes up, even nodes down) -->
+  <g stroke="#1C2A47" stroke-opacity="0.3" stroke-width="1.3">
+    <line x1="60"   y1="197" x2="60"   y2="178"/>
+    <line x1="157"  y1="223" x2="157"  y2="242"/>
+    <line x1="254"  y1="197" x2="254"  y2="178"/>
+    <line x1="351"  y1="223" x2="351"  y2="242"/>
+    <line x1="448"  y1="197" x2="448"  y2="178"/>
+    <line x1="545"  y1="223" x2="545"  y2="242"/>
+    <line x1="642"  y1="197" x2="642"  y2="178"/>
+    <line x1="739"  y1="223" x2="739"  y2="242"/>
+    <line x1="836"  y1="197" x2="836"  y2="178"/>
+    <line x1="933"  y1="223" x2="933"  y2="242"/>
+    <line x1="1030" y1="197" x2="1030" y2="178"/>
+  </g>
+
+  <!-- nodes: Nabeel = teal, Claude = orange -->
+  <g>
+    <circle cx="60"   cy="210" r="13" fill="#2C7F8C"/>
+    <circle cx="157"  cy="210" r="13" fill="#C0573E"/>
+    <circle cx="254"  cy="210" r="13" fill="#2C7F8C"/>
+    <circle cx="351"  cy="210" r="13" fill="#2C7F8C"/>
+    <!-- node 5: two wirings (Nabeel left / Claude right) -->
+    <path d="M448,197 A13,13 0 0,0 448,223 Z" fill="#2C7F8C"/>
+    <path d="M448,197 A13,13 0 0,1 448,223 Z" fill="#C0573E"/>
+    <circle cx="545"  cy="210" r="13" fill="#2C7F8C"/>
+    <circle cx="642"  cy="210" r="13" fill="#C0573E"/>
+    <circle cx="739"  cy="210" r="13" fill="#2C7F8C"/>
+    <circle cx="836"  cy="210" r="13" fill="#C0573E"/>
+    <circle cx="933"  cy="210" r="13" fill="#2C7F8C"/>
+    <circle cx="1030" cy="210" r="13" fill="#C0573E"/>
+  </g>
+
+  <!-- labels -->
+  <g font-size="12" text-anchor="middle" fill="#1C2A47">
+    <text x="60"   y="168">the idea</text>
+
+    <text x="157"  y="262">Phase 1: replace<tspan x="157" dy="15">&#8594; no, it starves</tspan></text>
+
+    <text x="254"  y="160">pivot:<tspan x="254" dy="15">augment, don&#8217;t replace</tspan></text>
+
+    <text x="351"  y="262">raise the bar<tspan x="351" dy="15">to SwiGLU</tspan></text>
+
+    <text x="448"  y="160">two wirings:<tspan x="448" dy="15">parallel / sequential</tspan></text>
+
+    <text x="545"  y="262">fairness fix:<tspan x="545" dy="15">gate the add-on</tspan></text>
+
+    <text x="642"  y="160">flat-text test:<tspan x="642" dy="15">still no</tspan></text>
+
+    <text x="739"  y="262">wrong arena?<tspan x="739" dy="15">(tokenisation)</tspan></text>
+
+    <text x="836"  y="160">decisive test:<tspan x="836" dy="15">a qualified yes</tspan></text>
+
+    <text x="933"  y="262">sweep: the win is<tspan x="933" dy="15">the plain big path</tspan></text>
+
+    <text x="1030" y="160">package<tspan x="1030" dy="15">for GitHub</tspan></text>
+  </g>
+</svg>

@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 440" font-family="'Segoe UI', Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="a" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto">
+      <path d="M0,0 L6.5,3 L0,6 Z" fill="#1C2A47"/>
+    </marker>
+  </defs>
+  <rect width="880" height="440" fill="#E9ECE7"/>
+  <text x="440" y="44" text-anchor="middle" font-size="19" font-weight="700" fill="#1C2A47">The toy &#8220;harmony&#8221; language: predict the chord from the nesting</text>
+
+  <!-- token row -->
+  <g font-size="14" text-anchor="middle">
+    <rect x="80"  y="86" width="34" height="42" rx="8" fill="#2C7F8C"/><text x="97"  y="113" fill="#F4F6F2">(</text>
+    <rect x="120" y="86" width="76" height="42" rx="8" fill="#2C7F8C"/><text x="158" y="113" fill="#F4F6F2">round</text>
+    <rect x="202" y="86" width="34" height="42" rx="8" fill="#6E63A6"/><text x="219" y="113" fill="#F4F6F2">(</text>
+    <rect x="242" y="86" width="84" height="42" rx="8" fill="#6E63A6"/><text x="284" y="113" fill="#F4F6F2">square</text>
+    <rect x="332" y="86" width="86" height="42" rx="8" fill="#C0573E"/><text x="375" y="112" fill="#F4F6F2" font-weight="700">CLASH</text>
+    <rect x="424" y="86" width="34" height="42" rx="8" fill="#DfE4Dc"/><text x="441" y="113" fill="#1C2A47">&#8230;</text>
+    <rect x="464" y="86" width="34" height="42" rx="8" fill="#6E63A6"/><text x="481" y="113" fill="#F4F6F2">)</text>
+    <rect x="504" y="86" width="34" height="42" rx="8" fill="#2C7F8C"/><text x="521" y="113" fill="#F4F6F2">)</text>
+  </g>
+
+  <!-- callout to the chord -->
+  <line x1="375" y1="148" x2="375" y2="130" stroke="#1C2A47" stroke-width="1.7" marker-end="url(#a)"/>
+  <rect x="250" y="150" width="250" height="40" rx="9" fill="#F4F6F2" stroke="#C0573E" stroke-opacity="0.5"/>
+  <text x="375" y="175" text-anchor="middle" font-size="13.5" fill="#1C2A47">outer <tspan fill="#2C7F8C" font-weight="700">round</tspan> + inner <tspan fill="#6E63A6" font-weight="700">square</tspan> &#8594; clash</text>
+
+  <text x="440" y="222" text-anchor="middle" font-size="13" fill="#1C2A47" fill-opacity="0.75">To get the chord right, the model must hold the outer bracket in mind while it reads the inner one.</text>
+
+  <!-- held-out inset -->
+  <rect x="64"  y="250" width="360" height="138" rx="14" fill="#F4F6F2" stroke="#1C2A47" stroke-opacity="0.15"/>
+  <text x="244" y="278" text-anchor="middle" font-size="15" font-weight="700" fill="#1C2A47">Training &#8212; every piece, many pairings</text>
+  <g font-size="12.5" fill="#1C2A47">
+    <text x="90" y="312">&#10003; round in round</text>
+    <text x="90" y="336">&#10003; square in round</text>
+    <text x="90" y="360">&#10003; square in square</text>
+    <text x="244" y="336" fill="#C0573E">&#10007; round in square &#160;(held out)</text>
+  </g>
+
+  <rect x="456" y="250" width="360" height="138" rx="14" fill="#F4F6F2" stroke="#1C2A47" stroke-opacity="0.15"/>
+  <text x="636" y="278" text-anchor="middle" font-size="15" font-weight="700" fill="#1C2A47">Test &#8212; the missing pairing</text>
+  <rect x="556" y="306" width="160" height="44" rx="9" fill="#E9ECE7" stroke="#C0573E" stroke-opacity="0.55"/>
+  <text x="636" y="333" text-anchor="middle" font-size="13.5" fill="#1C2A47">round in square &#160;<tspan font-weight="700" fill="#C0573E">?</tspan></text>
+
+  <text x="440" y="418" text-anchor="middle" font-size="14.5" font-weight="600" fill="#1C2A47">Seen every piece &#8212; never this combination.</text>
+</svg>
