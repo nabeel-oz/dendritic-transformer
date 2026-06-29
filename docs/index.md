@@ -1,5 +1,9 @@
 ---
 title: Dendritic Transformers
+description: >-
+  Do brain-inspired "dendritic" neurons improve the transformer architecture?
+  An open, honest human–AI investigation — Architectures of Mind #1.
+image: https://nabeel-oz.github.io/dendritic-transformer/assets/og-card.png
 ---
 
 # Do smarter neurons build tidier minds?

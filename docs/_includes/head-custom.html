@@ -1,0 +1,132 @@
+<!-- Custom polish for the Cayman theme — Dendritic Transformers -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --ink:    #1C2A47;
+    --clay:   #C0573E;
+    --teal:   #2C7F8C;
+    --violet: #6E63A6;
+    --bg:     #E9ECE7;
+    --muted:  #5C6678;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+  }
+
+  /* ---- Header banner ---- */
+  .page-header {
+    background-color: var(--ink);
+    background-image: linear-gradient(135deg, var(--ink) 0%, var(--teal) 100%);
+    padding: 4rem 1rem 4.5rem;
+  }
+  .project-name {
+    font-family: "Fraunces", Georgia, serif;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+  }
+  .project-tagline {
+    opacity: 0.95;
+    font-weight: 400;
+    max-width: 46rem;
+    margin: 0.6rem auto 0;
+  }
+  .page-header .btn {
+    border-color: rgba(255, 255, 255, 0.55);
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+  }
+  .page-header .btn:hover {
+    background-color: rgba(255, 255, 255, 0.18);
+    border-color: #fff;
+  }
+
+  /* ---- Content card ---- */
+  .main-content {
+    background: #fff;
+    max-width: 56rem;
+    margin: -2.25rem auto 2.5rem;
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(28, 42, 71, 0.10);
+    position: relative;
+    z-index: 2;
+  }
+  @media screen and (min-width: 64em) {
+    .main-content { padding: 3rem 4rem; }
+  }
+
+  /* ---- Headings ---- */
+  .main-content h1,
+  .main-content h2,
+  .main-content h3 {
+    font-family: "Fraunces", Georgia, serif;
+    color: var(--ink);
+    font-weight: 600;
+    letter-spacing: -0.3px;
+  }
+  .main-content h2 {
+    margin-top: 2.4rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 2px solid rgba(44, 127, 140, 0.18);
+  }
+  .main-content h3 { color: var(--teal); }
+
+  /* ---- Links ---- */
+  .main-content a {
+    color: var(--teal);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(44, 127, 140, 0.35);
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  .main-content a:hover {
+    color: var(--clay);
+    border-bottom-color: var(--clay);
+  }
+
+  /* ---- Blockquotes as callouts ---- */
+  .main-content blockquote {
+    color: var(--ink);
+    background: #F6F3EE;
+    border-left: 4px solid var(--clay);
+    border-radius: 0 8px 8px 0;
+    padding: 1rem 1.25rem;
+    margin: 1.6rem 0;
+    font-style: normal;
+  }
+  .main-content blockquote > :first-child { margin-top: 0; }
+  .main-content blockquote > :last-child  { margin-bottom: 0; }
+
+  /* ---- Figures ---- */
+  .main-content img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 1.6rem auto;
+    border-radius: 10px;
+    border: 1px solid rgba(28, 42, 71, 0.08);
+    box-shadow: 0 4px 14px rgba(28, 42, 71, 0.08);
+    background: #fff;
+  }
+
+  /* ---- Code ---- */
+  .main-content code {
+    background: rgba(44, 127, 140, 0.10);
+    color: var(--ink);
+    border-radius: 4px;
+  }
+  .main-content pre {
+    background: #1C2A47;
+    border: none;
+    border-radius: 10px;
+  }
+  .main-content pre > code { background: transparent; color: #E9ECE7; }
+
+  /* ---- Tables ---- */
+  .main-content table th { background: rgba(44, 127, 140, 0.10); }
+
+  /* ---- Footer ---- */
+  .site-footer { border-top-color: rgba(28, 42, 71, 0.10); }
+</style>

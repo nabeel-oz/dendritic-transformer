@@ -1,6 +1,15 @@
 theme: jekyll-theme-cayman
 title: Dendritic Transformers
 description: >-
-  Do brain-inspired "dendritic" neurons help a transformer think? An open,
-  honest human–AI investigation — Architectures of Mind #1.
+  Do brain-inspired "dendritic" neurons improve the transformer architecture? 
+  An open, honest human–AI investigation — Architectures of Mind #1.
 show_downloads: false
+
+# Social sharing / SEO (consumed by jekyll-seo-tag, which the Cayman theme calls)
+author: nabeel-oz
+image: https://nabeel-oz.github.io/dendritic-transformer/assets/og-card.png
+twitter:
+  card: summary_large_image
+
+plugins:
+  - jekyll-seo-tag
