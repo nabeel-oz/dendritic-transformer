@@ -233,6 +233,8 @@ That could have been the end — but it would have left the reviewer's deepest p
 
 So Claude built one. Each branch now (a) *learns* which small cluster of inputs to read, and (b) multiplies two projections of that cluster together to detect coincidence, before a shared cell body pulls the branches back in. And this time locality was made real: an enforced-sparse routing (`sparsemax`) that starts broad and is *pruned* down to a few inputs during training — with the effective number of inputs each branch reads logged at every step, so "did locality actually hold?" became a measured number, not an assumption.
 
+![Diagram of the ArborFFN dendritic primitive: each branch learns a local cluster of inputs and multiplies two projections of it to detect coincidence; the combined result then feeds the main SwiGLU soma alongside the preserved input.](assets/arbor-ffn.svg)
+
 It was graded on a new task built to defuse the XOR objection: instead of a two-way match/clash, the chord now comes from a **three-colour lookup table** with no tidy rule — every pairing has to be learned as itself, nothing is parity, nothing decomposes. Composition without the depth-friendly shortcut.
 
 *The three-colour table task — generalisation gap (lower = better), three seeds:*
