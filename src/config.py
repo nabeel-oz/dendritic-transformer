@@ -20,6 +20,7 @@ class RunConfig:
     #   phase 1: point | deep_flat | dendritic_free | dendritic_structured_strict |
     #            dendritic_structured_equal
     #   phase 2: swiglu | par_dend | par_dense | seq_dend | seq_dense
+    #   phase 3: deep_swiglu (depth control)
     ffn: str = "point"
 
     # backbone (identical across all variants)
@@ -37,6 +38,15 @@ class RunConfig:
     # phase-2 augmentative-block knobs
     main_frac: float = 0.5     # budget fraction spent on the SwiGLU main (rest -> add-on)
     connectivity: str = "sparse"  # add-on gate/up wiring: sparse (active-matched) | masked
+
+    # phase-3 knobs
+    deep_residual: bool = True     # deep_swiglu: residual around each sub-layer
+    # ArborFFN (seq_arbor) knobs -- the round-3b truer dendritic primitive
+    taps: int = 0                  # receptive-field size per branch (0 -> d/B)
+    routing: str = "learned"       # frozen (fixed slice) | learned (soft cluster)
+    branch_nonlin: str = "product" # gate (silu*·) | product (bilinear coincidence)
+    route_norm: str = "softmax"    # softmax | sparsemax (enforced-sparse locality)
+    route_init: str = "peaked"     # peaked (born local) | uniform (born global)
 
     # data
     dataset: str = "tinyshakespeare"

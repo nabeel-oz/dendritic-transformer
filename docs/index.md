@@ -187,7 +187,7 @@ So the honest answer to "can we get the best of both worlds?" is no — and the 
 
 ## What we found
 
-Across three task regimes and a full sweep, the brain-inspired ingredient we set out to test — **compartmentalisation**, sorting inputs into isolated groups — did **not** deliver the tidier, more generalisable concepts it promised. At every fair comparison a plain control matched or beat it on generalisation, and piling on more compartments only hurt. That is a clean, repeatedly-confirmed **negative on the headline idea** — and a real result.
+Across three task regimes and a full sweep, the mechanism we'd built to chase the idea — **compartmentalisation**, sorting inputs into isolated groups — did **not** deliver the tidier, more generalisable concepts it promised. (This didn't cover the original broader idea — not walls between inputs, but richer, more *intelligent connections* between neurons — a reading that gets its own, truer test later.) At every fair comparison a plain control matched or beat it on generalisation, and piling on more compartments only hurt. That is a clean, repeatedly-confirmed **negative on the headline idea** — and a real result.
 
 What the search *did* turn up deserves to be stated plainly. We ended up with an architecture that beats the plain *input → SwiGLU → output* neuron on tasks that genuinely tax the network — not by changing the neuron itself, but by **enriching its input first**: computing extra features from the same input and feeding them in before the neuron fires (the large sequential gated path). At matched parameters this halved a compositional-generalisation gap and sharply improved real-text fit.
 
@@ -195,15 +195,81 @@ There's a familiar shape to that. Handing a unit *precomputed features* — deri
 
 And it does connect back to the biology — just not where we first aimed. The dendritic inspiration was never really about compartmentalisation; it was about the fact that dendrites *add to the signal a neuron integrates before it fires*. That part — enrich, then fire — is exactly what worked. Where we should be fair is that we don't yet have a faithful mathematical primitive for a dendrite: we approximated one by reusing our abstraction for a *soma* — a gated SwiGLU unit — in the dendrite's role. A truer dendritic primitive might behave differently, which is its own invitation rather than a closed door. So: a firm "no" to compartments-as-composition, and a real "yes" to the older, simpler dendritic intuition that a neuron does better when its input is enriched first.
 
-![Timeline of the project's turns, coloured by whether Nabeel or Claude made each call.](assets/project-arc.svg)
+That is where the project was meant to end — a negative on the headline, one modest positive carried forward. But Nabeel didn't want the findings published on trust; he wanted them throughly reviewed first. So he set up a separate review agent — a *different* model, handed the whole write-up and told to find what was wrong with the reasoning. It found the crack, and it ran straight through the paragraph above.
+
+---
+
+## A reviewer pushes back
+
+The challenge landed on the one positive we'd allowed ourselves. Three points, each harder than the last:
+
+**1. The winner might be depth in a dendrite costume.** The best generaliser, `seq_dense`, unfolds — once you write out the algebra — into two full-width SwiGLU neurons stacked with an internal shortcut. Nothing *dendritic* survives in it: no compartments, no slices, full width throughout. So "sequential beats parallel" might just be "two layers beat one at the same budget." The control that would tell them apart is the obvious one we never ran: a plain **2-deep SwiGLU stack** at matched parameters. And the line about the effect earning its keep "at the level of a single *neuron*" was simply wrong — the winning variant is full-width and layer-grained; the genuinely per-neuron variants were the ones that *lost*.
+
+**2. The task quietly favours depth.** The hidden match/clash tag is **XOR** — parity — and XOR is the textbook problem a second layer is *made* to solve. Grade on XOR and you may be measuring "depth helps with XOR," not "this structure helps with composition."
+
+**3. The locality was never actually enforced.** Each faithful branch was only *initialised* to read a local slice; nothing stopped training from quietly widening it back out to read everything. A null on locality might mean "locality doesn't help" — or "locality wasn't there by the end." We had never measured which.
+
+All three were fair, and none had been controlled for. So the project reopened.
+
+## The missing control: was it just depth?
+
+The first fix was cheap and decisive: add the plain **2-deep SwiGLU stack** — same budget, ordinary neurons, no compartments and nothing dendritic, just depth — and stand it beside the old "winner" on the same toy-language task.
+
+*Toy-language generalisation gap (lower = generalises better), three seeds:*
+
+| variant | gap (↓) |
+|---|---|
+| plain **2-deep SwiGLU** (the missing control) | **0.091** |
+| `seq_dense` (the old "winner") | 0.102 |
+| `swiglu` (single layer) | 0.207 |
+
+The control *matched the winner* — edged it, even. Whatever had halved the gap, it wasn't the dendritic scaffolding; it was the second layer. The reviewer's second point held up too: swap the XOR rule for an easier one the model can solve without composing, and depth's edge over a plain neuron shrinks from wide to within noise — most of the win really was "depth helps with XOR." Then the sharpest check of all: that eye-catching **0.065** gap from the sweep, re-run across eight seeds instead of three, drifted back to **0.095 ± 0.047**. A winner's curse — the smallest number in a table is the one most likely to be luck, and it was.
+
+So the honest reclassification: the one surviving positive was **FFN-internal depth**, mostly on a depth-friendly task. The dendritic parts had been coming along for the ride.
+
+## A truer dendrite, and a fairer task
+
+That could have been the end — but it would have left the reviewer's deepest point unanswered. Every "dendrite" we'd built so far was really a *soma* — a standard gated neuron — reused in a branch's role. We had never built a primitive that does what a dendrite actually does: pick out a small cluster of inputs and detect a **coincidence** among them — *these arriving together* — which is a *multiply*, not a sum. Nabeel's steer was to stop adding neurons and depth, and instead enrich the **connective tissue between** them.
+
+So Claude built one. Each branch now (a) *learns* which small cluster of inputs to read, and (b) multiplies two projections of that cluster together to detect coincidence, before a shared cell body pulls the branches back in. And this time locality was made real: an enforced-sparse routing (`sparsemax`) that starts broad and is *pruned* down to a few inputs during training — with the effective number of inputs each branch reads logged at every step, so "did locality actually hold?" became a measured number, not an assumption.
+
+It was graded on a new task built to defuse the XOR objection: instead of a two-way match/clash, the chord now comes from a **three-colour lookup table** with no tidy rule — every pairing has to be learned as itself, nothing is parity, nothing decomposes. Composition without the depth-friendly shortcut.
+
+*The three-colour table task — generalisation gap (lower = better), three seeds:*
+
+| variant | gap (↓) | what it is |
+|---|---|---|
+| **2-deep SwiGLU** | **0.105** | plain depth |
+| `seq_dense` | 0.112 | depth in disguise |
+| dendrite — fixed local window + coincidence | 0.158 | frozen routing |
+| plain single-layer `swiglu` | 0.210 | — |
+| dendrite — **learned** routing + coincidence | 0.214 | the truest version |
+
+Two clean answers, both negative for the idea — and this is where the result gets more interesting than a flat "no":
+
+**The primitive is not inert.** A fixed local window with coincidence detection (0.158) genuinely *beats* a plain single-layer neuron of the same size (0.210). Spend the budget on multiplicative, locally-scoped features and you do get something a plain flat-sum neuron doesn't. There is a real *there* there.
+
+**But the dendritic part is the part that doesn't help.** The moment we let the branches *learn* their own input clusters — the feature that makes it genuinely dendrite-like — the advantage vanishes: the "truest" version (0.214) ties the plain neuron and is the *worst* on the board. And locality turned out to be causally inert: we swept the number of inputs each branch reads from about four (tightly local) up to all 192 (fully global), watched it move on the logs, and the generalisation gap didn't budge. Enforced locality — the thing the whole dendritic story rests on — changed nothing. And through all of it, none of these variants caught the plain 2-deep stack. On a task with no XOR to exploit, with locality provably in force, depth still won.
+
+## What we found, revised
+
+Put the two passes together and the picture is clean, if humbler than the one we nearly published:
+
+- The **headline idea — compartments and dendritic wiring producing tidier, more composable concepts — is a firm no**, now confirmed from two directions: the compartments lost in Phase 2, and a *faithful* learned-local-multiplicative dendrite lost again here, with its signature feature, locality, shown to carry no weight.
+- The **one robust positive is depth**, not dendrites. Enriching a neuron's input before it fires helps — because "enrich, then fire" is just a second layer, and a plain deep stack does it at least as well as any dendritic dressing. The earlier claim that this earns its keep "at the level of a single neuron" was the reviewer's first casualty, and rightly.
+- What *the dendritic primitive itself* adds is real but narrow, and worth stating precisely so it isn't oversold: a **multiplicative, locally-scoped feature detector beats a plain neuron of the same size — but loses to plain depth, and its specifically-dendritic ingredient, learned local routing, is the part that adds nothing.**
+
+That last point is the honest home for the idea — and it deserves care, because it's exactly the kind of result that tempts a too-generous reading. *It beats a plain neuron; surely dendrites are onto something, and we just haven't implemented them well enough yet.* The distinction between **an idea** and **today's best implementation of it** is a real one, and this is the strongest form of the optimistic case. But our own data pushes back on the easy version of it. We didn't merely fail to find a locality benefit; we **measured locality doing nothing** across the full range from tight to global. That isn't a null waiting for better engineering — it's evidence against the mechanism as we can currently state it. Dendritic computation may still earn its place at scales, tasks, or training regimes we never touched. Nothing here points that way, though, so the burden now sits with a future positive, not with this one's promise.
+
+![Timeline of the project's turns, coloured by whether Nabeel, Claude, or a reviewing model made each call.](assets/project-arc.svg)
 
 ---
 
 ## Why this might matter
 
-Set the dendrites aside for a moment. The part worth noticing is the *shape of the work*. A non-specialist's genuine question — *do richer neurons leave visible fingerprints?* — became a controlled, multi-seed, parameter-matched study across three task regimes, with internal probes, honest nulls, a sweep, and one real secondary finding, built and run on a single 8 GB laptop GPU, each experiment costing seconds to minutes.
+Set the dendrites aside for a moment. The part worth noticing is the *shape of the work*. A non-specialist's genuine question — *do richer neurons leave visible fingerprints?* — became a controlled, multi-seed, parameter-matched study across four task regimes, with internal probes, honest nulls, a sweep, an adversarial review pass, and a secondary finding that only got narrower and more honest the harder we pushed on it, built and run on a single 8 GB laptop GPU, each experiment costing seconds to minutes.
 
-It's worth being plain about who did what, because the interesting thing is that *neither half could have done it alone, and both got things wrong*. Nabeel never wrote a training loop; Claude never decided what was worth asking. Nabeel supplied the direction, raised the gating confound, and suspected the test was in the wrong arena. Claude built and ran everything, designed the controls, and also made the unflagged character-level choice that nearly hid the effect. The wrong turns are kept in this write-up on purpose — the pivot, the fairness fix, the tokenisation rethink — because that back-and-forth is where the work actually happened.
+It's worth being plain about who did what, because the interesting thing is that *neither half could have done it alone, and both got things wrong*. Nabeel never wrote a training loop; Claude never decided what was worth asking. Nabeel supplied the direction, raised the gating confound, and suspected the test was in the wrong arena. Claude built and ran everything, designed the controls, and also made the unflagged character-level choice that nearly hid the effect. The wrong turns are kept in this write-up on purpose — the pivot, the fairness fix, the tokenisation rethink, the late reclassification of the "win" as plain depth — because that back-and-forth is where the work actually happened. The final turn even brought in a third voice, at Nabeel's instigation: he set a separate review agent — a *different* model — onto the finished write-up to attack its reasoning, and when it found the crack, the calls to reopen the project and to chase the *connective tissue* between neurons were his.
 
 There's a more personal reason this mattered to Nabeel, and it's worth putting in plain terms. These models already hold more knowledge than any one person can, and outscore most of us on a widening list of tests. So what is there left for a human mind to actually *do*? This project was, quietly, an experiment in that question: what does a person bring to research when the tool they're working with is — in several dimensions, though not yet all — more capable than they are? The answer it points to is the one sketched in essays from places like Anthropic about where this is heading: that the human's contribution shifts toward *taste and direction* — which question is worth asking, which comparison is fair, when a tidy answer should be distrusted, when a null means the test was in the wrong place. None of the findings here came from the human knowing more than the AI. They came from a person deciding what was worth knowing and refusing the convenient answer. If that is the shape of useful work in a world of more-capable tools, this was a small, hands-on rehearsal of it.
 
@@ -213,7 +279,7 @@ The claim isn't that this produced a breakthrough; the headline result is a nega
 
 ## Dig deeper
 
-- **Full technical reports**, with every number, error bar, and threat-to-validity: [REPORT_PHASE1.md]({{ site.github.repository_url }}/blob/main/REPORT_PHASE1.md) and [REPORT_PHASE2.md]({{ site.github.repository_url }}/blob/main/REPORT_PHASE2.md).
+- **Full technical reports**, with every number, error bar, and threat-to-validity: [REPORT_PHASE1.md]({{ site.github.repository_url }}/blob/main/REPORT_PHASE1.md), [REPORT_PHASE2.md]({{ site.github.repository_url }}/blob/main/REPORT_PHASE2.md), and [REPORT_PHASE3.md]({{ site.github.repository_url }}/blob/main/REPORT_PHASE3.md) (the reviewer pass — the depth control and the truer dendrite).
 - **Design briefs**, written before any code, with predictions stated up front: [PROJECT_BRIEF_PHASE1.md]({{ site.github.repository_url }}/blob/main/PROJECT_BRIEF_PHASE1.md) and [PROJECT_BRIEF_PHASE2.md]({{ site.github.repository_url }}/blob/main/PROJECT_BRIEF_PHASE2.md).
 - **Build log** — what was done at each step: [PROJECT_LOG.md]({{ site.github.repository_url }}/blob/main/PROJECT_LOG.md).
 
@@ -244,6 +310,13 @@ python src/eval_generalization.py results/analysis/test2_pcfg.png \
 
 # The sweet-spot sweep (budget split / number of compartments, sequential variants)
 python experiments/run_sweep.py --seeds 0 1 2
+
+# Round 3 — the reviewer pass: the missing depth control (3a) and the truer dendrite (3b)
+python experiments/run_round3a.py --seeds 0 1 2            # adds deep_swiglu + the OR foil
+python experiments/run_round3b.py --only core --seeds 0 1 2  # ArborFFN 2×2 + enforced-locality ablation
+python src/eval_generalization.py results/analysis/round3b_table.png \
+  swiglu_table deep_swiglu_table seq_dense_table \
+  arbor_fg_table arbor_fp_table arbor_lg_table arbor_lp_table
 ```
 
 The first run downloads TinyShakespeare (and, for the subword arm, the King James Bible) and trains a small word-piece tokeniser; everything else is config-driven and seeded for exact reproduction.
@@ -257,17 +330,18 @@ PROJECT_BRIEF_PHASE1.md   original design brief + predictions (phase 1)
 PROJECT_BRIEF_PHASE2.md   the augmentative redesign brief (phase 2)
 REPORT_PHASE1.md          phase-1 results (substitutive dendrites — negative)
 REPORT_PHASE2.md          phase-2 results (augmentation, the decisive test, the sweep)
+REPORT_PHASE3.md          the reviewer pass (depth control + the truer dendrite — negative)
 PROJECT_LOG.md            running build log
-configs/                  one YAML per run (variant × dataset)
+configs/                  one YAML per run (variant × dataset; incl. deep_swiglu_*, arbor_*)
 src/
   model.py                shared GPT backbone; FFN chosen by config
-  ffn.py                  all FFN variants + parameter-parity checks + solvers
+  ffn.py                  all FFN variants (incl. DeepGatedFFN, ArborFFN) + parity checks + solvers
   train.py                training loop; logging; checkpoints; CLI overrides
   aggregate.py            multi-seed loss curves (mean ± std)
   analyze_representations.py   internal-structure probes (Test 3)
   eval_generalization.py  Test 2 — toy-grammar gap + subword transfer gap
-  data/                   real_text.py · toy_language.py (grammar) · bpe*.py (subword)
-experiments/              run_seeds.py (matrices) · run_sweep.py (the sweep)
+  data/                   real_text.py · toy_language.py (grammar, incl. table rule) · bpe*.py (subword)
+experiments/              run_seeds.py · run_sweep.py · run_round3a.py · run_round3b.py
 results/                  logs, checkpoints, figures (gitignored — reproducible)
 ```
 

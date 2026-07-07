@@ -193,7 +193,7 @@ def main_pcfg(out_path: str, run_names: list[str]):
 def main(out_path: str, run_names: list[str]):
     """Dispatch on the first run's dataset: PCFG harmony gap or BPE transfer."""
     _, cfg0 = rebuild_model(sorted((RESULTS / run_names[0]).glob("seed*"))[0] / "ckpt.pt")
-    if cfg0.dataset == "toy_pcfg":
+    if cfg0.dataset.startswith("toy_pcfg"):   # toy_pcfg (XOR) or toy_pcfg_or (OR)
         main_pcfg(out_path, run_names)
     elif cfg0.dataset == "tinyshakespeare_bpe":
         main_bpe(out_path, run_names)

@@ -27,7 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from config import RunConfig, load_config
 from data import load_dataset
-from ffn import assert_param_parity, count_params
+from ffn import ArborFFN, assert_param_parity, count_params, arbor_report
 from model import GPT
 
 RESULTS_DIR = Path(__file__).resolve().parents[1] / "results"
@@ -105,6 +105,8 @@ def main():
                     help="override main_frac (budget split sweep)")
     ap.add_argument("--branches", type=int, default=None,
                     help="override branches (compartment-count sweep)")
+    ap.add_argument("--taps", type=int, default=None,
+                    help="override taps (ArborFFN receptive-field size sweep)")
     ap.add_argument("--run-name", type=str, default=None,
                     help="override run_name (so sweep points don't collide)")
     args = ap.parse_args()
@@ -118,6 +120,8 @@ def main():
         cfg.main_frac = args.main_frac
     if args.branches is not None:
         cfg.branches = args.branches
+    if args.taps is not None:
+        cfg.taps = args.taps
     if args.run_name is not None:
         cfg.run_name = args.run_name
     set_seed(cfg.seed)
@@ -153,6 +157,18 @@ def main():
           f"allocated={rep['allocated']:,}  active={rep['active']:,}  "
           f"(matched on {rep['parity_on']}, rel diff {rep['rel_diff']:.3%})")
 
+    # round-3b: report the arbor's actual geometry (per-corner branch width w -- so
+    # "learned vs frozen" attribution is read honestly, since learned routing spends
+    # params on the route tensor and so must run a narrower w at matched parity).
+    addon0 = getattr(model.blocks[0].ffn, "addon", None)
+    if isinstance(addon0, ArborFFN):
+        main0 = model.blocks[0].ffn.main
+        main_h = main0.gate.out_features
+        print(f"[arbor]  routing={addon0.routing} nonlin={addon0.branch_nonlin} "
+              f"route_norm={addon0.route_norm} route_init={addon0.route_init}  "
+              f"B={addon0.B} taps={addon0.k} width={addon0.w}  "
+              f"| soma(main) hidden={main_h}  scale_init={model.blocks[0].ffn.scale.item():.2f}")
+
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay,
         betas=(0.9, 0.99),
@@ -176,6 +192,17 @@ def main():
     samples_file = open(samples_path, "w", encoding="utf-8")
     samples_file.write(f"# {cfg.run_name}  (ffn={cfg.ffn}, seed={cfg.seed})\n"
                        f"# text samples logged at each eval interval\n")
+
+    # round-3b: log arbor routing entropy + pre-norm activation variance at each
+    # eval, so a flat-routing (locality-never-held) run is FLAGGED rather than
+    # mis-read as "dendrites don't help", and product blow-up is visible.
+    has_arbor = arbor_report(model) is not None
+    if has_arbor:
+        arbor_file = open(run_dir / "arbor_stats.csv", "w", newline="",
+                          encoding="utf-8")
+        arbor_writer = csv.writer(arbor_file)
+        arbor_writer.writerow(["step", "act_var", "route_entropy", "eff_inputs",
+                               "support", "frac_local"])
 
     tokens_per_step = cfg.batch_size * cfg.context
     start = time.time()
@@ -204,6 +231,23 @@ def main():
                 f"{tokens_seen/1e6:.2f}M tokens) =====\n{sample_text}\n")
             samples_file.flush()
 
+            if has_arbor:
+                ar = arbor_report(model)
+                arbor_writer.writerow([
+                    step, f"{ar['act_var']:.4g}",
+                    f"{ar['route_entropy']:.4f}" if ar['learned'] else "",
+                    f"{ar['eff_inputs']:.2f}" if ar['learned'] else "",
+                    f"{ar['support']:.1f}" if ar['learned'] else "",
+                    f"{ar['frac_local']:.3f}" if ar['learned'] else ""])
+                arbor_file.flush()
+                if ar['learned']:
+                    print(f"  [arbor] act_var {ar['act_var']:.3g} | route "
+                          f"eff_inputs {ar['eff_inputs']:.1f}/{addon0.d_model} "
+                          f"(support {ar['support']:.0f}, frac_local "
+                          f"{ar['frac_local']:.2f})")
+                else:
+                    print(f"  [arbor] act_var {ar['act_var']:.3g} (frozen routing)")
+
         if step == cfg.max_steps:
             break
 
@@ -221,6 +265,18 @@ def main():
 
     csv_file.close()
     samples_file.close()
+
+    if has_arbor:
+        arbor_file.close()
+        ar = arbor_report(model)
+        if ar['learned']:
+            print(f"[arbor] FINAL routing: eff_inputs {ar['eff_inputs']:.1f}/"
+                  f"{addon0.d_model}  support {ar['support']:.0f}  "
+                  f"frac_local {ar['frac_local']:.2f}  act_var {ar['act_var']:.3g}")
+            if ar['frac_local'] < 0.5:
+                print("[arbor] WARNING: routing stayed largely GLOBAL "
+                      "(frac_local<0.5) -- the locality bias was NOT held, so a null "
+                      "here does not test locality (see round-3b notes).")
 
     # ---- final checkpoint ----
     ckpt = {

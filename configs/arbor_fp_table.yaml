@@ -1,0 +1,31 @@
+# Round 3b arbor — routing=frozen nonlin=product route_norm=softmax route_init=peaked on toy_pcfg_table.
+run_name: arbor_fp_table
+ffn: seq_arbor
+
+d_model: 192
+n_layer: 4
+n_head: 6
+context: 128
+ffn_mult: 4
+dropout: 0.1
+
+branches: 4
+taps: 0
+main_frac: 0.5
+routing: frozen
+branch_nonlin: product
+route_norm: softmax
+route_init: peaked
+
+dataset: toy_pcfg_table
+
+seed: 0
+batch_size: 64
+lr: 0.0006
+weight_decay: 0.1
+grad_clip: 1.0
+warmup_steps: 200
+max_steps: 2500
+eval_interval: 250
+eval_iters: 100
+sample_tokens: 200

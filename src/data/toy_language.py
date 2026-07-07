@@ -50,16 +50,39 @@ class PCFG:
 
     def __init__(self, n_types: int = 6, n_words: int = 4, max_depth: int = 4,
                  p_branch: float = 0.55, seq_stop: float = 0.55,
-                 n_heldout: int = 10, max_len: int = 96, split_seed: int = 0):
+                 n_heldout: int = 10, max_len: int = 96, split_seed: int = 0,
+                 harmony_rule: str = "parity", n_colors: int = 2):
         self.T = n_types
         self.W = n_words
         self.max_depth = max_depth
         self.p_branch = p_branch       # P(open a bracket | not at max depth)
         self.seq_stop = seq_stop       # P(end the current element sequence)
         self.max_len = max_len
-        # binary feature per type: first half color 0, second half color 1
-        self.col = [0 if t < n_types // 2 else 1 for t in range(n_types)]
-        self.F = 2                     # harmony range (parity)
+        # harmony rule f(color(parent), color(child)) -> token:
+        #   'parity' : XOR over 2 colors -- NOT linearly separable, wants a hidden
+        #              layer (the known-hard anchor; over-determines a depth win).
+        #   'or'     : OR over 2 colors -- linearly separable. DEMOTED to a saturation
+        #              sanity check: with 2 colors the only non-separable binary rules
+        #              are XOR/XNOR, so OR can't discriminate FFN topologies.
+        #   'table'  : a fixed RANDOM, non-decomposable C x C lookup over n_colors>=3.
+        #              Requires genuinely combining both features to generalise to
+        #              held-out type pairs (gap > 0, architecture matters), but is NOT
+        #              the specific XOR that depth trivially handles -- the round-3b
+        #              DISCRIMINATOR of "XOR-specific" vs "general composition".
+        #  Base rates differ across rules, so absolute accuracies are NOT comparable
+        #  across rules -- only the within-rule in-dist->held-out gap.
+        if harmony_rule not in ("parity", "or", "table"):
+            raise ValueError(f"unknown harmony_rule: {harmony_rule!r}")
+        self.harmony_rule = harmony_rule
+        self.C = 2 if harmony_rule in ("parity", "or") else n_colors
+        # colour per type: contiguous balanced blocks. For C=2 this is exactly the
+        # legacy [0,0,0,1,1,1] assignment, so 'parity'/'or' tasks are byte-identical.
+        per = max(1, self.T // self.C)
+        self.col = [min(t // per, self.C - 1) for t in range(self.T)]
+        self.F = 2 if harmony_rule in ("parity", "or") else self.C  # harmony range
+        # random non-decomposable table (independent stream so it can't perturb the
+        # held-out shuffle stream; fixed by split_seed -> identical across variants).
+        self._table = self._build_table(split_seed) if harmony_rule == "table" else None
 
         # fixed token vocab (stable order -> reproducible stoi)
         toks = ["<sep>"]
@@ -74,11 +97,36 @@ class PCFG:
 
         self.heldout = self._choose_heldout(n_heldout, split_seed)
 
+    def _build_table(self, seed: int):
+        """A random C x C -> {0..C-1} lookup that genuinely depends on BOTH colours.
+        Constraints so it is a strong discriminator (not a near-constant a model can
+        shortcut): EVERY row and EVERY column is non-constant (so the child always
+        matters given the parent and vice-versa), all C outcomes appear, the outcome
+        distribution is near-balanced (max cell-count <= ceil(C*C/C)+1 -> base rate
+        stays low), and it is not the additive `(a+b) mod C`."""
+        import collections
+        rng = random.Random(seed + 9999)
+        C = self.C
+        add = [[(a + b) % C for b in range(C)] for a in range(C)]
+        max_count = (C * C) // C + 1                          # C=3 -> 4 (base rate <=0.44)
+        for _ in range(100000):
+            H = [[rng.randrange(C) for _ in range(C)] for _ in range(C)]
+            rows_ok = all(len(set(H[a])) > 1 for a in range(C))
+            cols_ok = all(len({H[a][b] for a in range(C)}) > 1 for b in range(C))
+            counts = collections.Counter(H[a][b] for a in range(C) for b in range(C))
+            balanced = len(counts) == C and max(counts.values()) <= max_count
+            if rows_ok and cols_ok and balanced and H != add:
+                return H
+        raise RuntimeError("could not build a non-decomposable harmony table")
+
     # --- split construction ---------------------------------------------------
     def _choose_heldout(self, n_heldout: int, seed: int) -> set:
-        """Pick `n_heldout` (parent, child) pairs to hold out, guaranteeing the
-        rule stays learnable: every type still appears as a parent and as a child
-        in training, and both parity outcomes survive in training."""
+        """Pick `n_heldout` (parent, child) TYPE pairs to hold out so the rule stays
+        learnable and the held-out test is genuine RECOMBINATION: every type still
+        appears as a parent and as a child in training, and every harmony outcome
+        survives. For the k-ary table we additionally require each held-out pair's
+        COLOUR combination to be covered by some non-held-out pair (so the model has
+        seen the colours + rule, only the specific type pairing is novel)."""
         rng = random.Random(seed)
         all_pairs = [(a, b) for a in range(self.T) for b in range(self.T)]
         for _ in range(10000):
@@ -87,14 +135,25 @@ class PCFG:
             train_pairs = [p for p in all_pairs if p not in held]
             parents = {a for a, _ in train_pairs}
             children = {b for _, b in train_pairs}
-            parities = {self.harmony(a, b) for a, b in train_pairs}
-            if (len(parents) == self.T and len(children) == self.T
-                    and len(parities) == self.F):
-                return held
+            outcomes = {self.harmony(a, b) for a, b in train_pairs}
+            if not (len(parents) == self.T and len(children) == self.T
+                    and len(outcomes) == self.F):
+                continue
+            if self.harmony_rule == "table":
+                train_cols = {(self.col[a], self.col[b]) for a, b in train_pairs}
+                if not all((self.col[a], self.col[b]) in train_cols
+                           for a, b in held):
+                    continue
+            return held
         raise RuntimeError("could not build a valid held-out split; lower n_heldout")
 
     def harmony(self, parent: int, child: int) -> int:
-        return (self.col[parent] + self.col[child]) % 2
+        a, b = self.col[parent], self.col[child]
+        if self.harmony_rule == "table":
+            return self._table[a][b]
+        if self.harmony_rule == "or":
+            return a | b
+        return (a + b) % 2   # parity (XOR)
 
     # --- generation -----------------------------------------------------------
     def _gen_seq(self, rng, depth, parent, out, hpos):

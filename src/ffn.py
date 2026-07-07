@@ -45,6 +45,8 @@ the variant (allocated for strict, active for equal).
 """
 from __future__ import annotations
 
+import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -261,6 +263,43 @@ class GatedFFN(nn.Module):
         return count_params(self)
 
 
+class DeepGatedFFN(nn.Module):
+    """A plain N-deep stack of SwiGLU sub-layers -- the DEPTH control (round 3).
+
+    The reviewer's key point: the phase-2 winner `seq_dense` unfolds to
+    `SwiGLU2(x + scale * SwiGLU1(x))` -- two full-width SwiGLU sub-layers with an
+    internal residual and a learned scale. Nothing dendritic survives in it. So
+    "sequential beats parallel" may just be "depth beats width at matched params".
+    This module is the missing control: a plain 2-deep SwiGLU stack, equal-width
+    sub-layers, parameter-matched to V0, with NO learned scale and NO add-on /
+    compartment scaffolding. If `deep_swiglu` ~= `seq_dense` on the compositional
+    gap, the dendrite story is really a depth story.
+
+    `residual=True` puts a residual around each sub-layer (the honest way a deep
+    FFN block is normally built, and the closest match to seq_dense's `x + addon`
+    integration); `residual=False` is a bare stack.
+    """
+
+    def __init__(self, d_model: int, hidden_each: int, n_sub: int = 2,
+                 residual: bool = True, dropout: float = 0.0):
+        super().__init__()
+        self.residual = residual
+        self.subs = nn.ModuleList(
+            [GatedFFN(d_model, hidden_each) for _ in range(n_sub)])
+        self.drop = nn.Dropout(dropout)
+
+    def forward(self, x):
+        for sub in self.subs:
+            x = x + sub(x) if self.residual else sub(x)
+        return self.drop(x)
+
+    def allocated_params(self) -> int:
+        return count_params(self)
+
+    def active_params(self) -> int:
+        return count_params(self)
+
+
 class CompartmentalGatedFFN(nn.Module):
     """SwiGLU with compartmentalized branches -- the dendritic add-on.
 
@@ -333,6 +372,198 @@ class CompartmentalGatedFFN(nn.Module):
             dead = (self.gate.weight.numel() - live) + (self.up.weight.numel() - live)
             return count_params(self) - dead
         return count_params(self)
+
+
+def sparsemax(z: torch.Tensor, dim: int = -1) -> torch.Tensor:
+    """Sparsemax (Martins & Astudillo 2016) over the last-ish dim: a softmax
+    alternative that returns EXACTLY sparse, sum-to-one weights (most entries are
+    literally zero). Used for dendritic routing so a branch prunes to a genuinely
+    sparse receptive field rather than a soft global average -- the differentiable,
+    schedule-free version of 'overproduce then prune to a sparse local cluster'."""
+    z = z - z.max(dim=dim, keepdim=True).values                 # shift for stability
+    zs, _ = torch.sort(z, dim=dim, descending=True)
+    rng = torch.arange(1, z.size(dim) + 1, device=z.device, dtype=z.dtype)
+    shape = [1] * z.dim(); shape[dim] = -1
+    rng = rng.view(shape)
+    cssv = zs.cumsum(dim)
+    support = (1 + rng * zs) > cssv
+    ks = support.to(z.dtype).sum(dim=dim, keepdim=True).clamp_min(1.0)
+    tau = (cssv.gather(dim, ks.long() - 1) - 1) / ks
+    return torch.clamp(z - tau, min=0.0)
+
+
+class ArborFFN(nn.Module):
+    """Dendritic arbor add-on (round 3b) -- the *truer* dendritic primitive.
+
+    Round 3a showed the phase-2 "win" was really FFN-internal DEPTH (a plain 2-deep
+    SwiGLU stack matched it) and mostly an artifact of the XOR harmony rule. The
+    reviewer's open question: a faithful dendrite is not "more neurons / more
+    depth", it is richer CONNECTIVE TISSUE -- each branch (a) LEARNS which small
+    cluster of inputs it listens to, and (b) detects their MULTIPLICATIVE /
+    supralinear COINCIDENCE (an NMDA-like plateau), locally, before the soma fires.
+    This module injects those coincidence features into the residual stream that
+    feeds the main SwiGLU soma; it does NOT add a second full neuron layer.
+
+    The bet is an inductive bias (like convolution): constraining multiplicative
+    interactions to *learned local clusters* generalizes compositionally better
+    than the soma's single *global* gate, at matched parameters. The frozen-slice
+    version lost (phase 2); 3b tests whether ADAPTIVE clusters + SUPRALINEAR
+    coincidence rescue it -- and whether LOCALITY is actually doing the work.
+
+    Axes:
+      routing -- the branch's receptive field:
+        'frozen'  : fixed contiguous slice x[j*k:(j+1)*k] (requires k=d/B). Anchor.
+        'learned' : r_j = norm(R_j) @ x, R_j in R^{k x d}; each of k taps is a
+                    non-negative, sum-to-one combination of inputs (a soft-clustered
+                    receptive field). A k-dim bottleneck + the simplex constraint
+                    stop it collapsing into a free dense d->k map.
+      route_norm -- how the simplex weights are produced (the locality lever):
+        'softmax'   : dense simplex; locality is NOT enforced -- a row may spread to
+                      near-uniform (a global average), dissolving the local bias.
+                      Report routing entropy so a flat-row null is caught, not
+                      mis-read as "dendrites don't help".
+        'sparsemax' : EXACTLY sparse simplex; the branch prunes to a sparse local
+                      cluster (biology's overproduce-then-prune) as ONE architectural
+                      choice, parity unchanged, no schedule.
+      route_init -- 'peaked' (born local: each tap starts on a distinct input) or
+                    'uniform' (born global: near-flat, must concentrate if useful).
+        The 3-cell locality ablation (same B,k,task,seeds):
+          born-local-free       = learned, softmax,   peaked
+          born-global-free      = learned, softmax,   uniform
+          born-global-concentr. = learned, sparsemax, uniform
+      branch_nonlin -- the within-branch coincidence:
+        'gate'    : z_j = silu(Wa r_j) * (Wb r_j)   (SwiGLU-style)
+        'product' : z_j = (Wa r_j) * (Wb r_j)        (symmetric bilinear coincidence;
+                    a stronger un-gated supralinearity, closer to an NMDA plateau)
+
+    Stability: the un-gated product is unbounded, so branch outputs are RMS-normed
+    (parameter-free) before the dense soma -- this guards the 2h run against
+    quadratic blow-up while preserving the *relative* coincidence pattern; the
+    pre-norm activation variance is logged so weight runaway is still visible.
+    Parity is on active params (no dead weights). Pair with
+    `DendriticBlock(topology='sequential')` -- the arbor enriches x *before* the
+    soma computes (the connective-tissue wiring).
+    """
+
+    def __init__(self, d_model: int, branches: int, taps: int, width: int,
+                 routing: str = "learned", branch_nonlin: str = "product",
+                 route_norm: str = "softmax", route_init: str = "peaked",
+                 dropout: float = 0.0):
+        super().__init__()
+        if routing not in ("frozen", "learned"):
+            raise ValueError(f"unknown routing: {routing!r}")
+        if branch_nonlin not in ("gate", "product"):
+            raise ValueError(f"unknown branch_nonlin: {branch_nonlin!r}")
+        if route_norm not in ("softmax", "sparsemax"):
+            raise ValueError(f"unknown route_norm: {route_norm!r}")
+        if route_init not in ("peaked", "uniform"):
+            raise ValueError(f"unknown route_init: {route_init!r}")
+        if routing == "frozen":
+            assert d_model % branches == 0 and taps == d_model // branches, (
+                f"frozen routing requires taps == d_model//branches "
+                f"(got taps={taps}, d/B={d_model // branches})")
+        self.d_model, self.B, self.k, self.w = d_model, branches, taps, width
+        self.routing, self.branch_nonlin = routing, branch_nonlin
+        self.route_norm, self.route_init = route_norm, route_init
+
+        if routing == "learned":
+            self.route = nn.Parameter(torch.empty(branches, taps, d_model))
+        self.Wa = nn.Parameter(torch.empty(branches, taps, width))
+        self.Wb = nn.Parameter(torch.empty(branches, taps, width))
+        self.soma = nn.Linear(branches * width, d_model, bias=False)
+        self.drop = nn.Dropout(dropout)
+        self._act_var = None   # last pre-norm product/gate variance (for logging)
+        self._reset_arbor()
+
+    def _reset_arbor(self):
+        # Self-contained init (these names are NOT among init_ffn_weights' suffixes).
+        nn.init.normal_(self.Wa, mean=0.0, std=0.02)
+        nn.init.normal_(self.Wb, mean=0.0, std=0.02)
+        if self.routing == "learned":
+            nn.init.normal_(self.route, mean=0.0, std=0.02)
+            if self.route_init == "peaked":
+                # bias each (branch,tap) hard toward a distinct input so it is born
+                # GENUINELY local: logit ~ln(0.9(d-1)/0.1) puts ~0.9 softmax mass on
+                # the peak (eff_inputs ~1-2), a real frozen-slice-like start that the
+                # 'free' (softmax) cell may then drift away from.
+                boost = math.log(0.9 * (self.d_model - 1) / 0.1)
+                with torch.no_grad():
+                    for j in range(self.B):
+                        for t in range(self.k):
+                            self.route[j, t, (j * self.k + t) % self.d_model] += boost
+            # 'uniform': leave ~0 -> softmax/sparsemax ~ uniform (born global)
+
+    def _route_weights(self) -> torch.Tensor:
+        if self.route_norm == "sparsemax":
+            return sparsemax(self.route, dim=-1)
+        return torch.softmax(self.route, dim=-1)
+
+    def forward(self, x):
+        lead = x.shape[:-1]
+        if self.routing == "learned":
+            R = self._route_weights()                         # (B,k,d) on the simplex
+            r = torch.einsum("...d,bkd->...bk", x, R)          # (...,B,k)
+        else:  # frozen contiguous slices (k = d/B covers all of x)
+            r = x.reshape(*lead, self.B, self.k)
+        a = torch.einsum("...bk,bkw->...bw", r, self.Wa)
+        b = torch.einsum("...bk,bkw->...bw", r, self.Wb)
+        z = (F.silu(a) * b) if self.branch_nonlin == "gate" else (a * b)
+        z = z.reshape(*lead, self.B * self.w)
+        self._act_var = z.detach().float().var()               # logged (no host sync)
+        # parameter-free RMS norm guards the un-gated product against blow-up while
+        # keeping the relative coincidence pattern the soma reads.
+        z = z * torch.rsqrt(z.pow(2).mean(dim=-1, keepdim=True) + 1e-6)
+        return self.drop(self.soma(z))
+
+    @torch.no_grad()
+    def routing_report(self) -> dict | None:
+        """Mean routing-row entropy / effective #inputs / support size -- so a
+        flat-row (locality-never-held) run is flagged, not mis-read as a null."""
+        if self.routing != "learned":
+            return None
+        w = self._route_weights()                              # (B,k,d)
+        p = w.clamp_min(1e-12)
+        ent = -(p * p.log()).sum(-1)                           # (B,k) nats
+        eff = ent.exp()                                        # effective #inputs
+        support = (w > 1e-6).float().sum(-1)                   # exact nonzeros
+        return {
+            "entropy": ent.mean().item(),
+            "eff_inputs": eff.mean().item(),
+            "support": support.mean().item(),
+            "frac_local": (eff < 0.25 * self.d_model).float().mean().item(),
+            "d": self.d_model,
+        }
+
+    def allocated_params(self) -> int:
+        return count_params(self)
+
+    def active_params(self) -> int:
+        return count_params(self)
+
+
+def arbor_report(model) -> dict | None:
+    """Aggregate routing entropy + pre-norm activation variance across every
+    ArborFFN add-on in the model (round-3b logging). None if there are no arbors."""
+    ents, effs, sups, locs, avars = [], [], [], [], []
+    for block in getattr(model, "blocks", []):
+        addon = getattr(block.ffn, "addon", None)
+        if not isinstance(addon, ArborFFN):
+            continue
+        if addon._act_var is not None:
+            avars.append(addon._act_var.item())
+        rr = addon.routing_report()
+        if rr is not None:
+            ents.append(rr["entropy"]); effs.append(rr["eff_inputs"])
+            sups.append(rr["support"]); locs.append(rr["frac_local"])
+    if not avars:
+        return None
+    mean = lambda xs: (sum(xs) / len(xs)) if xs else float("nan")
+    return {
+        "act_var": mean(avars),
+        "route_entropy": mean(ents), "eff_inputs": mean(effs),
+        "support": mean(sups), "frac_local": mean(locs),
+        "learned": bool(ents),
+    }
 
 
 class DendriticBlock(nn.Module):
@@ -434,6 +665,23 @@ def solve_compartmental_glu_width(d: int, B: int, target: int) -> int:
     return best_w
 
 
+def solve_arbor_width(d: int, B: int, k: int, target: int, routing: str) -> int:
+    """Per-branch width w for the ArborFFN (bias-free) best-matching `target`.
+    params = routing + Wa + Wb + soma
+           = (B*k*d if learned else 0) + 2*(B*k*w) + (B*w)*d
+           = base + w * (2*B*k + B*d).
+    Learned routing has a fixed floor `base = B*k*d`; if `target <= base` the arbor
+    cannot even afford its wiring (raise -> the caller should lower taps/branches or
+    main_frac). Monotonic in w."""
+    base = (B * k * d) if routing == "learned" else 0
+    per_w = 2 * B * k + B * d
+    if target <= base:
+        raise ValueError(
+            f"arbor routing cost {base:,} exceeds addon budget {target:,} "
+            f"(d={d}, B={B}, k={k}); lower taps/branches or main_frac")
+    return max(1, round((target - base) / per_w))
+
+
 def build_ffn(cfg) -> nn.Module:
     """Factory: select the FFN module from the config string. Applies the one
     shared init policy so no variant gets an init edge."""
@@ -454,6 +702,12 @@ def build_ffn(cfg) -> nn.Module:
         ffn = DendriticFFN(d, B, wb, wb, "sparse", p, cfg.branch_act)
     elif kind == "swiglu":
         ffn = GatedFFN(d, solve_glu_hidden(d, target), p)
+    elif kind == "deep_swiglu":
+        # depth control: two equal-width SwiGLU sub-layers, each matched to half
+        # the V0 budget (2 * 3*d*h ~= target). No scale, no compartments.
+        residual = getattr(cfg, "deep_residual", True)
+        h = solve_glu_hidden(d, target // 2)
+        ffn = DeepGatedFFN(d, h, n_sub=2, residual=residual, dropout=p)
     elif kind in ("par_dend", "par_dense", "seq_dend", "seq_dense"):
         # Augmentative block: a smaller SwiGLU `main` (soma) PRESERVES x, plus an
         # add-on that only adds. `*_dend` = compartmental SwiGLU; `*_dense` = plain
@@ -474,6 +728,25 @@ def build_ffn(cfg) -> nn.Module:
         main_budget = target - addon.allocated_params() - 1  # -1 for the scale scalar
         main = GatedFFN(d, solve_glu_hidden(d, main_budget), p)
         ffn = DendriticBlock(addon, main, topology)
+    elif kind == "seq_arbor":
+        # Round-3b truer primitive: a learned/frozen-routed, multiplicative dendritic
+        # arbor feeds the SwiGLU soma (sequential = connective tissue, not depth).
+        # The four 2x2 corners + the 3-cell locality ablation are all THIS module,
+        # selected by config so stabilisation etc. are identical across corners:
+        #   routing/branch_nonlin -> the 2x2 (frozen|learned x gate|product)
+        #   route_norm/route_init -> locality ablation (softmax|sparsemax, peaked|uniform)
+        routing = getattr(cfg, "routing", "learned")
+        nonlin = getattr(cfg, "branch_nonlin", "product")
+        route_norm = getattr(cfg, "route_norm", "softmax")
+        route_init = getattr(cfg, "route_init", "peaked")
+        main_frac = getattr(cfg, "main_frac", 0.5)
+        k = getattr(cfg, "taps", 0) or (d // B)
+        addon_budget = target - round(target * main_frac)
+        w = solve_arbor_width(d, B, k, addon_budget, routing)
+        addon = ArborFFN(d, B, k, w, routing, nonlin, route_norm, route_init, p)
+        main_budget = target - addon.allocated_params() - 1
+        main = GatedFFN(d, solve_glu_hidden(d, main_budget), p)
+        ffn = DendriticBlock(addon, main, "sequential")
     else:
         raise ValueError(f"unknown ffn variant: {kind!r}")
     init_ffn_weights(ffn)
@@ -494,6 +767,8 @@ def parity_metric(cfg, ffn) -> tuple[str, int]:
     if cfg.ffn == "dendritic_structured_equal":
         return "active", ffn.active_params()
     if cfg.ffn in ("par_dend", "seq_dend") and sparse:
+        return "active", ffn.active_params()
+    if cfg.ffn == "seq_arbor":
         return "active", ffn.active_params()
     return "allocated", ffn.allocated_params()
 
